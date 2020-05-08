@@ -1,3 +1,2 @@
 # Basic option pricing method
-Include:
-European option: Black-Scholes, n-step Binomial Tree, Monte Carlo Method
+Compute option value with Black-Scholes, n-step Binomial Tree, Monte Carlo Model.
