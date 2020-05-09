@@ -4,7 +4,8 @@
 #include <vector>
 #include <algorithm>
 #include <cassert>
-
+#include "Solver.h"
+#include "BS_Euro.h"
 // S: spot price at time 0
 // T: time to maturity (in years)
 // v: the volatility
@@ -12,8 +13,6 @@
 // q: dividend
 // n: the number of time steps
 // K: the strike of the american call option
-
-enum OptionType { Call, Put };
 
 //Pricing American option with binomial method
 double amer(OptionType optType, double K, double T, double S, double sigma, double r, double q, int n)
@@ -55,44 +54,6 @@ double amer(OptionType optType, double K, double T, double S, double sigma, doub
 }
 
 //pricing American option value with the smooth Black-Scholes analytic formula
-double cnorm(double x)
-{
-    // constants
-    double a1 = 0.254829592;
-    double a2 = -0.284496736;
-    double a3 = 1.421413741;
-    double a4 = -1.453152027;
-    double a5 = 1.061405429;
-    double p = 0.3275911;
-    int sign = 1;
-    if (x < 0)
-        sign = -1;
-    x = fabs(x) / sqrt(2.0);
-    double t = 1.0 / (1.0 + p * x);
-    double y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * exp(-x * x);
-    return 0.5 * (1.0 + sign * y);
-}
-
-double BlackScholesEuro(OptionType optType, double K, double T, double S_0, double sigma, double rate, double q)
-{
-    double sigmaSqrtT = sigma * std::sqrt(T);
-    double d1 = (std::log(S_0 / K) + (rate - q) * T) / sigmaSqrtT + 0.5 * sigmaSqrtT;
-    double d2 = d1 - sigmaSqrtT;
-    double V_0;
-    switch (optType)
-    {
-    case Call:
-        V_0 = S_0 * exp(-q * T) * cnorm(d1) - K * exp(-rate * T) * cnorm(d2);
-        break;
-    case Put:
-        V_0 = K * exp(-rate * T) * cnorm(-d2) - S_0 * exp(-q * T) * cnorm(-d1);
-        break;
-    default:
-        throw "unsupported optionType";
-    }
-    return V_0;
-}
-
 double amerSmooth(OptionType optType,double S, double K, double T, double sigma, double r, double q, double n)
 {
 
@@ -143,45 +104,6 @@ double amerSmooth(OptionType optType,double S, double K, double T, double sigma,
 
 //Under Black - Scholes model, one way to approximate American put option price is the
 //quadratic approximation method by Barone - Adesi and Whaley(1987).
-bool RootBracketing(std::function<double(double)> f, double& a, double& b
-    , double min = std::numeric_limits<double>::min()
-    , double max = std::numeric_limits<double>::max())
-{
-    const int NTRY = 50;
-    const double FACTOR = 1.6;
-    if (a >= b) throw("wrong input a and b in RootBracketing");
-    double f1 = f(a);
-    double f2 = f(b);
-    for (int j = 0; j < NTRY; j++) {
-        if (f1 * f2 < 0.0) return true;
-        if (std::abs(f1) < std::abs(f2))
-            f1 = f(a = std::max(a + FACTOR * (a - b), min));
-        else
-            f2 = f(b = std::min(b + FACTOR * (b - a), max));
-    }
-    return false;
-}
-
-double rfbisect(std::function<double(double)> f, double& a, double& b, double tol)
-{
-    assert(a < b && f(a) * f(b) < 0);
-    double c;
-    while ((b - a) / 2 > tol) {
-        c = (a + b) / 2.0;
-        //std::cout << "(a, b) = (" << a << ", " << b << ")" << std::endl;
-        if (std::abs(f(c)) < tol)
-            return c;
-        else {
-            if (f(a) * f(c) < 0)
-                b = c;
-            else
-                a = c;
-        }
-    }
-    return c;
-}
-
-
 double whaley(OptionType optType, double S_0, double K, double T, double sigma, double r, double q)
 {
     double b = r - q;
@@ -251,8 +173,8 @@ double whaley(OptionType optType, double S_0, double K, double T, double sigma, 
 
 int main() {
     double S, K, T, sigma, r, tenors, q;
-    S = 100.0; K = 90.0; T = 1.0; sigma = 0.15; r = 0.03, q = 0.01, tenors = 100;
-    std::cout << amer(Put, K, T, S, sigma, r, q, tenors) << std::endl;
-    std::cout << amerSmooth(Put, S, K, T, sigma, r, q, tenors) << std::endl;
-    std::cout << whaley(Put,S, K, T, sigma, r, q) << std::endl;
+    S = 100.0; K = 90.0; T = 1.0; sigma = 0.15; r = 0.03, q = 0.01, tenors = 1000;
+    std::cout << amer(Call, K, T, S, sigma, r, q, tenors) << std::endl;
+    std::cout << amerSmooth(Call, S, K, T, sigma, r, q, tenors) << std::endl;
+    std::cout << whaley(Call,S, K, T, sigma, r, q) << std::endl;
 }
